@@ -1,0 +1,60 @@
+**Title:** Set up the analysis of training-data barriers and mitigation strategies
+
+## Project status
+- Studies training-data barriers and mitigation strategies in weed detection, segmentation, and classification
+- Source dataset and country map are in place
+- Analysis steps are not implemented yet
+
+## Folders
+- 9 folders
+
+- `Docs`: project documents, including setup and installation
+  - `01_Project-Setup.md`: what this project is and what is in the repository now
+  - `02_Installation.md`: how to install Python and the project packages
+- `common`: shared paths and names used by every phase
+  - `__init__.py`: marks this folder as a Python package
+  - `constants.py`: sheet names, analysis-ready filenames, and the Synthetic Image Methods set
+  - `paths.py`: locations of the workbook, settings, map, and output folders
+- `config`: settings for the analysis, figures, and research questions
+  - `analysis-config.yaml`: task order, primary metrics, random seed, repetitions, and sensitivity rules
+  - `figures-config.yaml`: figure sizes, colors, filenames, and output formats
+  - `research-question-map.yaml`: which tables and figures answer each research question
+- `data`: the Final ARD workbook
+  - `Final - ARD - Analysis Ready Dataset.xlsx`: source record of the included studies
+- `data/maps`: country boundaries for the geographic view
+  - `naturalearth_lowres.shp`: country shapes
+  - `naturalearth_lowres.shx`: shape index
+  - `naturalearth_lowres.dbf`: country attributes
+  - `naturalearth_lowres.prj`: map projection
+  - `naturalearth_lowres.cpg`: text encoding for the country names
+- `helpers`: reading, writing, statistics, plotting, logging, and validation
+  - `__init__.py`: marks this folder as a Python package
+  - `io.py`: reads the workbook and settings, and writes CSV and JSON
+  - `statistics.py`: bootstrap intervals, permutation tests, and study-level gains
+  - `plotting.py`: figure style and saving PNG, PDF, and TIFF
+  - `progress.py`: timestamped progress logs for each phase
+  - `validation.py`: checks that Phase 1 kept one row per study and exact performance links
+- `results`: outputs written when the analysis runs
+- `src`: the three phase scripts
+  - `__init__.py`: marks this folder as a Python package
+  - `01_create_analysis_ready_tables.py`: builds the analysis-ready tables from the workbook
+  - `02_create_statistical_results.py`: computes the research-question statistics from those tables
+  - `03_create_figures.py`: draws the figures from the saved statistics
+- `src/analysis`: table building, statistical results, and figures
+  - `__init__.py`: marks this folder as a Python package
+  - `prepare_tables.py`: joins the workbook sheets and applies the exact performance-link rule
+  - `statistical_pipeline.py`: builds the descriptive and research-question tables
+  - `figures.py`: draws each publication figure
+
+## Root files
+- 3 files
+- `.gitignore`: keeps `PR-Description.md` out of Git
+- `README.md`: project title
+- `requirements.txt`: Python packages the analysis needs
+
+## What is included
+- Final ARD workbook, the source record of the included studies
+- Country boundaries for the geographic view of those studies
+
+## Test plan
+- [ ] Source workbook and country map are available
