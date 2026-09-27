@@ -76,7 +76,7 @@ uv pip install -r requirements.txt
 
 ## Packages
 
-- **pandas:** reads the Final ARD workbook and builds the analysis tables
+- **pandas:** reads the analysis-ready dataset and builds the analysis tables
 - **numpy:** handles numeric gains, counts, and bootstrap draws
 - **scipy:** runs the permutation tests, chi-square measures, and regression slopes
 - **matplotlib:** draws the publication figures

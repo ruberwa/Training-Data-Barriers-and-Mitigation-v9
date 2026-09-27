@@ -3,7 +3,7 @@
 ## Project status
 - Studies training-data barriers and mitigation strategies in weed detection, segmentation, and classification
 - Source dataset and country map are in place
-- Analysis steps are not implemented yet
+- Analysis-ready tables are built from the source workbook
 
 ## Folders
 - 9 folders
@@ -11,6 +11,7 @@
 - `Docs`: project documents, including setup and installation
   - `01_Project-Setup.md`: what this project is and what is in the repository now
   - `02_Installation.md`: how to install Python and the project packages
+  - `03_Analysis-Ready-Tables.md`: how the source workbook becomes the six analysis-ready tables
 - `common`: shared paths and names used by every phase
   - `__init__.py`: marks this folder as a Python package
   - `constants.py`: sheet names, analysis-ready filenames, and the Synthetic Image Methods set
@@ -19,15 +20,15 @@
   - `analysis-config.yaml`: task order, primary metrics, random seed, repetitions, and sensitivity rules
   - `figures-config.yaml`: figure sizes, colors, filenames, and output formats
   - `research-question-map.yaml`: which tables and figures answer each research question
-- `data`: the Final ARD workbook
-  - `Final - ARD - Analysis Ready Dataset.xlsx`: source record of the included studies
+- `data`: the analysis-ready dataset
+  - `Analysis-ready-dataset.xlsx`: source record of the included studies
 - `data/maps`: country boundaries for the geographic view
   - `naturalearth_lowres.shp`: country shapes
   - `naturalearth_lowres.shx`: shape index
   - `naturalearth_lowres.dbf`: country attributes
   - `naturalearth_lowres.prj`: map projection
   - `naturalearth_lowres.cpg`: text encoding for the country names
-- `helpers`: reading, writing, statistics, plotting, logging, and validation
+- `utils`: reading, writing, statistics, plotting, logging, and validation
   - `__init__.py`: marks this folder as a Python package
   - `io.py`: reads the workbook and settings, and writes CSV and JSON
   - `statistics.py`: bootstrap intervals, permutation tests, and study-level gains
@@ -35,6 +36,15 @@
   - `progress.py`: timestamped progress logs for each phase
   - `validation.py`: checks that Phase 1 kept one row per study and exact performance links
 - `results`: outputs written when the analysis runs
+  - `analysis_ready_tables/analysis_ready_tables.xlsx`: the six tables in one workbook
+  - `analysis_ready_tables/csv/study_master.csv`: one row per study
+  - `analysis_ready_tables/csv/barrier_mitigation_map.csv`: barrier linked to mitigation inside each study
+  - `analysis_ready_tables/csv/performance_results.csv`: exact baseline versus mitigation comparisons
+  - `analysis_ready_tables/csv/performance_linkage_audit.csv`: every mitigation result, including rows with no exact baseline
+  - `analysis_ready_tables/csv/evidence_quality.csv`: risk-of-bias and credibility judgments
+  - `analysis_ready_tables/csv/sources.csv`: source and justification for each study
+  - `logs/phase1.log`: progress record for this step
+  - `validation/phase1_validation.json`: pass or fail record for this step
 - `src`: the three phase scripts
   - `__init__.py`: marks this folder as a Python package
   - `01_create_analysis_ready_tables.py`: builds the analysis-ready tables from the workbook
@@ -53,7 +63,7 @@
 - `requirements.txt`: Python packages the analysis needs
 
 ## What is included
-- Final ARD workbook, the source record of the included studies
+- Analysis-ready dataset, the source record of the included studies
 - Country boundaries for the geographic view of those studies
 
 ## Test plan
