@@ -17,7 +17,6 @@
 - **Performance Results:** eligible comparisons, with the signed gain
 - **Performance Linkage Audit:** every mitigation result
 - **Evidence Quality:** risk-of-bias and credibility judgments for each study
-- **Sources:** source and justification for each study
 
 ## Where they are written
 - `results/analysis_ready_tables/analysis_ready_tables.xlsx`
@@ -29,6 +28,5 @@
 - `results/analysis_ready_tables/csv/performance_results.csv`
 - `results/analysis_ready_tables/csv/performance_linkage_audit.csv`
 - `results/analysis_ready_tables/csv/evidence_quality.csv`
-- `results/analysis_ready_tables/csv/sources.csv`
 - `results/logs/analysis_ready_tables.log`
 - `results/validation/analysis_ready_tables.json`
