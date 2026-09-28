@@ -26,7 +26,7 @@ def more_columns(count):
     return f"... {count} more columns"
 
 
-def phase1_description():
+def analysis_ready_description():
     return "Create analysis-ready tables from the analysis-ready dataset"
 
 

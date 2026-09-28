@@ -30,5 +30,5 @@
 - `results/analysis_ready_tables/csv/performance_linkage_audit.csv`
 - `results/analysis_ready_tables/csv/evidence_quality.csv`
 - `results/analysis_ready_tables/csv/sources.csv`
-- `results/logs/phase1.log`
-- `results/validation/phase1_validation.json`
+- `results/logs/analysis_ready_tables.log`
+- `results/validation/analysis_ready_tables.json`

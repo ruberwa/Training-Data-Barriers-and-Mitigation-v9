@@ -29,7 +29,7 @@ def duplicate_key_count(frame: pd.DataFrame, cols: list[str]) -> int:
     return int(frame.duplicated(cols).sum())
 
 
-def phase1_validation(raw: dict[str, pd.DataFrame], ready: dict[str, pd.DataFrame]) -> dict:
+def analysis_ready_validation(raw: dict[str, pd.DataFrame], ready: dict[str, pd.DataFrame]) -> dict:
     master = ready["study_master"]
     register = ready["comparison_register"]
     performance = ready["performance_results"]

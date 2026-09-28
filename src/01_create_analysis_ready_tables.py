@@ -20,7 +20,7 @@ from common.Messages import (
     loading_workbook,
     output_workbook,
     pending_rows,
-    phase1_description,
+    analysis_ready_description,
     phase_complete,
     phase_started,
     progress_log,
@@ -46,17 +46,17 @@ from common.paths import (
 from src.analysis.prepare_tables import build_analysis_ready
 from utils.io import ensure_directories, load_yaml, read_raw_ard, save_csv, save_json, sha256
 from utils.progress import open_log, record
-from utils.validation import phase1_validation
+from utils.validation import analysis_ready_validation
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description=phase1_description())
+    parser = argparse.ArgumentParser(description=analysis_ready_description())
     parser.add_argument("--data", default=str(DATA_FILE), help=data_argument_help())
     args = parser.parse_args()
 
     data_path = Path(args.data).resolve()
     ensure_directories(ANALYSIS_READY_DIR, ANALYSIS_READY_CSV_DIR, VALIDATION_DIR, LOGS_DIR)
-    log_path = LOGS_DIR / "phase1.log"
+    log_path = LOGS_DIR / "analysis_ready_tables.log"
     open_log(log_path)
     lines = []
 
@@ -64,7 +64,7 @@ def main() -> None:
         lines.append(message)
         record(log_path, message)
 
-    note(phase_started(phase1_description()))
+    note(phase_started(analysis_ready_description()))
     note(progress_log(log_path))
     note(loading_configuration(ANALYSIS_CONFIG))
     cfg = load_yaml(ANALYSIS_CONFIG)
@@ -94,11 +94,11 @@ def main() -> None:
             frame.to_excel(writer, sheet_name=ANALYSIS_READY_SHEETS[key], index=False)
 
     note(running_validation())
-    validation = phase1_validation(raw, ready)
+    validation = analysis_ready_validation(raw, ready)
     validation["source_file"] = str(data_path)
     validation["source_sha256"] = sha256(data_path)
     validation["expected_studies_from_config"] = cfg["project"].get("expected_studies")
-    validation_path = VALIDATION_DIR / "phase1_validation.json"
+    validation_path = VALIDATION_DIR / "analysis_ready_tables.json"
     save_json(validation, validation_path)
 
     note(phase_complete())

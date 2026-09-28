@@ -46,8 +46,8 @@
   - `analysis_ready_tables/csv/performance_linkage_audit.csv`: every tab 8 row, including rows that were not selected
   - `analysis_ready_tables/csv/evidence_quality.csv`: risk-of-bias and credibility judgments
   - `analysis_ready_tables/csv/sources.csv`: source and justification for each study
-  - `logs/phase1.log`: progress record for this step
-  - `validation/phase1_validation.json`: pass or fail record for this step
+  - `logs/analysis_ready_tables.log`: progress record for the analysis-ready tables
+  - `validation/analysis_ready_tables.json`: pass or fail record for the analysis-ready tables
 - `src`: the three phase scripts
   - `__init__.py`: marks this folder as a Python package
   - `01_create_analysis_ready_tables.py`: builds the analysis-ready tables from the workbook
