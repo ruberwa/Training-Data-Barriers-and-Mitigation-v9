@@ -1,6 +1,9 @@
 ANALYSIS_READY_FILES = {
     "study_master": "study_master.csv",
-    "barrier_mitigation_map": "barrier_mitigation_map.csv",
+    "barrier_profile": "barrier_profile.csv",
+    "mitigation_profile": "mitigation_profile.csv",
+    "barrier_mitigation_cooccurrence": "barrier_mitigation_cooccurrence.csv",
+    "comparison_register": "comparison_register.csv",
     "performance_results": "performance_results.csv",
     "performance_linkage_audit": "performance_linkage_audit.csv",
     "evidence_quality": "evidence_quality.csv",
@@ -9,12 +12,19 @@ ANALYSIS_READY_FILES = {
 
 ANALYSIS_READY_SHEETS = {
     "study_master": "Study Master",
-    "barrier_mitigation_map": "Barrier-Mitigation Map",
+    "barrier_profile": "Barrier Profile",
+    "mitigation_profile": "Mitigation Profile",
+    "barrier_mitigation_cooccurrence": "Co-occurrence",
+    "comparison_register": "Comparison Register",
     "performance_results": "Performance Results",
     "performance_linkage_audit": "Performance Linkage Audit",
     "evidence_quality": "Evidence Quality",
     "sources": "Sources",
 }
+
+STATUS_ELIGIBLE = "Eligible"
+STATUS_INELIGIBLE = "Ineligible"
+STATUS_PENDING = "Pending"
 
 SYNTHETIC_IMAGE_STRATEGIES = {"Data Augmentation", "Synthetic Data Generation"}
 

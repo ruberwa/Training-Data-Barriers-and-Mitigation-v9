@@ -10,20 +10,22 @@ if str(ROOT) not in sys.path:
 
 import pandas as pd
 
-from common.constants import ANALYSIS_READY_SHEETS
+from common.constants import ANALYSIS_READY_SHEETS, STATUS_PENDING
 from common.Messages import (
-    barrier_mitigation_rows,
     building_tables,
     csv_directory,
     data_argument_help,
-    exact_linked_rows,
+    eligible_rows,
     loading_configuration,
     loading_workbook,
     output_workbook,
+    pending_rows,
     phase1_description,
     phase_complete,
     phase_started,
     progress_log,
+    register_rows,
+    removed_previous_table,
     running_validation,
     sheets_loaded,
     source_studies,
@@ -70,7 +72,7 @@ def main() -> None:
     raw = read_raw_ard(data_path)
     note(sheets_loaded(len(raw)))
     note(building_tables())
-    ready = build_analysis_ready(raw, cfg)
+    ready = build_analysis_ready(raw)
     note(tables_built(len(ready)))
 
     total_tables = len(ready)
@@ -78,6 +80,12 @@ def main() -> None:
         output_path = ANALYSIS_READY_CSV_DIR / f"{key}.csv"
         note(writing_table(index, total_tables, output_path.name, len(frame)))
         save_csv(frame, output_path)
+
+    written = {f"{key}.csv" for key in ready}
+    for previous in ANALYSIS_READY_CSV_DIR.glob("*.csv"):
+        if previous.name not in written:
+            previous.unlink()
+            note(removed_previous_table(previous.name))
 
     workbook_path = ANALYSIS_READY_DIR / "analysis_ready_tables.xlsx"
     note(writing_workbook(workbook_path))
@@ -95,8 +103,9 @@ def main() -> None:
 
     note(phase_complete())
     note(source_studies(ready["study_master"]["Study ID"].nunique()))
-    note(barrier_mitigation_rows(len(ready["barrier_mitigation_map"])))
-    note(exact_linked_rows(len(ready["performance_results"])))
+    note(register_rows(len(ready["comparison_register"])))
+    note(eligible_rows(len(ready["performance_results"])))
+    note(pending_rows(int(ready["comparison_register"]["Status"].eq(STATUS_PENDING).sum())))
     note(validation_status(validation["status"]))
     note(output_workbook(workbook_path))
     note(csv_directory(ANALYSIS_READY_CSV_DIR))

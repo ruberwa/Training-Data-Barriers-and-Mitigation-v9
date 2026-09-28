@@ -1,114 +1,193 @@
 from __future__ import annotations
 
+import re
+
 import numpy as np
 import pandas as pd
 
-from common.constants import SYNTHETIC_IMAGE_STRATEGIES
+from common.constants import STATUS_ELIGIBLE, STATUS_PENDING, SYNTHETIC_IMAGE_STRATEGIES
+
+REGISTER_COLUMNS = [
+    "Comparison ID",
+    "Study ID",
+    "Task",
+    "Baseline Study Instance ID",
+    "Baseline Source Row",
+    "Baseline Method",
+    "Metric",
+    "Metric Family",
+    "Baseline (%)",
+    "Selected Study Instance ID",
+    "Selected Source Result Row",
+    "Proposed Method",
+    "Mitigation (%)",
+    "Status",
+    "Reason",
+    "Signed Gain (pp)",
+]
+SOLE_CANDIDATE_REASON = "Sole tab 8 row shares the study, metric, metric family, and instance ID"
+SEVERAL_CANDIDATES_REASON = "Several tab 8 rows share this study and metric"
+NO_CANDIDATE_REASON = "No tab 8 row with the same metric"
+CONTEXT_MISMATCH_REASON = "The only tab 8 row for this metric does not share the instance ID and metric family"
+_COUNT = re.compile(r"\d{1,3}(?:,\d{3})+|\d+")
 
 
-def build_analysis_ready(raw: dict[str, pd.DataFrame], analysis_config: dict) -> dict[str, pd.DataFrame]:
+def _numeric_dataset_size(value):
+    if isinstance(value, bool) or pd.isna(value):
+        return pd.NA
+    if isinstance(value, (int, np.integer)):
+        return int(value)
+    if isinstance(value, float):
+        if np.isfinite(value) and value >= 0 and value.is_integer():
+            return int(value)
+        return pd.NA
+    text = str(value).strip().replace(" ", "")
+    if _COUNT.fullmatch(text):
+        return int(text.replace(",", ""))
+    return pd.NA
+
+
+def _strip_columns(frame, columns):
+    for column in columns:
+        frame[column] = frame[column].map(lambda value: value.strip() if isinstance(value, str) else value)
+    return frame
+
+
+def _result_fields(row):
+    if row is None:
+        return {
+            "Selected Study Instance ID": pd.NA,
+            "Selected Source Result Row": pd.NA,
+            "Proposed Method": pd.NA,
+            "Mitigation (%)": pd.NA,
+        }
+    return {
+        "Selected Study Instance ID": row["Study Instance ID"],
+        "Selected Source Result Row": int(row["Source Result Row"]),
+        "Proposed Method": row["Proposed Method"],
+        "Mitigation (%)": row["Mitigation (%)"],
+    }
+
+
+def _automatic_choice(results, study_id, instance_id, metric, family):
+    same_metric = results[results["Study ID"].eq(study_id) & results["Metric"].eq(metric)]
+    if len(same_metric) == 0:
+        return STATUS_PENDING, NO_CANDIDATE_REASON, None
+    if len(same_metric) > 1:
+        return STATUS_PENDING, SEVERAL_CANDIDATES_REASON, None
+    row = same_metric.iloc[0]
+    if row["Study Instance ID"] == instance_id and row["Metric Family"] == family:
+        return STATUS_ELIGIBLE, SOLE_CANDIDATE_REASON, row
+    return STATUS_PENDING, CONTEXT_MISMATCH_REASON, None
+
+
+def _comparison_register(baselines, results, master):
+    tasks = master.set_index("Study ID")["Task"]
+    rows = []
+    for baseline in baselines.to_dict("records"):
+        study_id = baseline["Study ID"]
+        instance_id = baseline["Baseline Study Instance ID"]
+        metric = baseline["Metric"]
+        family = baseline["Metric Family"]
+        status, reason, chosen = _automatic_choice(results, study_id, instance_id, metric, family)
+        fields = _result_fields(chosen)
+        gain = pd.NA
+        if status == STATUS_ELIGIBLE and chosen is not None:
+            gain = float(chosen["Mitigation (%)"]) - float(baseline["Baseline (%)"])
+        rows.append({
+            "Study ID": study_id,
+            "Task": tasks.get(study_id, pd.NA),
+            "Baseline Study Instance ID": instance_id,
+            "Baseline Source Row": int(baseline["Baseline Source Row"]),
+            "Baseline Method": baseline["Baseline Method"],
+            "Metric": metric,
+            "Metric Family": family,
+            "Baseline (%)": baseline["Baseline (%)"],
+            "Status": status,
+            "Reason": reason,
+            "Signed Gain (pp)": gain,
+            **fields,
+        })
+    register = pd.DataFrame(rows)
+    register.insert(0, "Comparison ID", [f"C{i:04d}" for i in range(1, len(register) + 1)])
+    register["Signed Gain (pp)"] = pd.to_numeric(register["Signed Gain (pp)"], errors="coerce")
+    register["Selected Source Result Row"] = pd.to_numeric(register["Selected Source Result Row"], errors="coerce").astype("Int64")
+    return register[REGISTER_COLUMNS]
+
+
+def _audit(results, register):
+    chosen = register.loc[
+        register["Status"].eq(STATUS_ELIGIBLE) & register["Selected Source Result Row"].notna(),
+        ["Selected Source Result Row", "Comparison ID", "Baseline Study Instance ID"],
+    ].copy()
+    chosen = chosen.groupby("Selected Source Result Row", as_index=False).agg({
+        "Comparison ID": lambda values: "; ".join(values.astype(str)),
+        "Baseline Study Instance ID": lambda values: "; ".join(values.astype(str)),
+    })
+    audit = results.merge(chosen, left_on="Source Result Row", right_on="Selected Source Result Row", how="left")
+    audit["Selected"] = np.where(audit["Comparison ID"].notna(), "Yes", "No")
+    audit = audit.drop(columns=["Selected Source Result Row"])
+    return audit
+
+
+def build_analysis_ready(raw: dict[str, pd.DataFrame]) -> dict[str, pd.DataFrame]:
     ident = raw["identification"].copy()
     context = raw["context"].copy().rename(columns={"Crop ": "Crop"})
-    datasets = raw["datasets"].copy().rename(columns={"Dataset Size": "Dataset Size (images)"})
-
+    datasets = raw["datasets"].copy()
     master = ident.merge(context, on="Study ID", how="left", validate="one_to_one")
     master = master.merge(datasets, on="Study ID", how="left", validate="one_to_one")
-    master["Dataset Size (images)"] = pd.to_numeric(master["Dataset Size (images)"], errors="coerce")
+    master["Dataset Size (numeric)"] = master["Dataset Size"].map(_numeric_dataset_size).astype("Int64")
     master["Year"] = pd.to_numeric(master["Year"], errors="coerce").astype("Int64")
 
-    barriers = raw["barriers"].copy().rename(columns={
+    barriers = _strip_columns(raw["barriers"].copy().rename(columns={
         "Modules": "Barrier Modules",
         "Barriers": "Normalized Barrier",
+    }), ["Study ID", "Study Instance ID"])
+    mitigations = _strip_columns(raw["mitigations"].copy().rename(columns={
+        "Mitigations": "Mitigation Strategy",
+    }), ["Study ID", "Study Instance ID"])
+    task = master[["Study ID", "Task"]]
+    barrier_profile = barriers.merge(task, on="Study ID", how="left", validate="many_to_one")
+    mitigations["Synthetic Image Method"] = mitigations["Mitigation Strategy"].isin(SYNTHETIC_IMAGE_STRATEGIES).map({
+        True: "Yes",
+        False: "No",
     })
-    mitigations = raw["mitigations"].copy().rename(columns={"Mitigations": "Mitigation Strategy"})
+    mitigations["Synthetic Type"] = mitigations["Mitigation Strategy"].where(mitigations["Synthetic Image Method"].eq("Yes"), "")
+    mitigation_profile = mitigations.merge(task, on="Study ID", how="left", validate="many_to_one")
 
     key = ["Study ID", "Study Instance ID"]
-    mapping = barriers.merge(
-        mitigations,
-        on=key,
-        how="outer",
-        validate="one_to_one",
-        indicator=True,
-    )
-    mapping["Barrier-Mitigation Linkage"] = mapping["_merge"].map({
-        "both": "Matched",
+    cooccurrence = barriers.merge(mitigations, on=key, how="outer", validate="one_to_one", indicator=True)
+    cooccurrence["Co-occurrence"] = cooccurrence["_merge"].map({
+        "both": "Same-instance co-occurrence",
         "left_only": "Barrier only",
         "right_only": "Mitigation only",
     })
-    mapping = mapping.drop(columns="_merge")
-    mapping = mapping.merge(master[["Study ID", "Task", "Environment"]], on="Study ID", how="left", validate="many_to_one")
-    mapping["Synthetic Image Method"] = mapping["Mitigation Strategy"].isin(SYNTHETIC_IMAGE_STRATEGIES).map({True: "Yes", False: "No"})
-    mapping["Synthetic Type"] = mapping["Mitigation Strategy"].where(mapping["Synthetic Image Method"].eq("Yes"), "")
+    cooccurrence = cooccurrence.drop(columns="_merge")
+    cooccurrence = cooccurrence.merge(task, on="Study ID", how="left", validate="many_to_one")
 
-    baselines = raw["baselines"].copy().rename(columns={"Baseline Modules": "Baseline Method"})
-    proposed = raw["mitigation_results"].copy().rename(columns={"Mitigation Modules": "Proposed Method"})
-    if "Gain" in proposed.columns:
-        proposed = proposed.rename(columns={"Gain": "Reported Gain (pp)"})
-    else:
-        proposed["Reported Gain (pp)"] = pd.NA
+    baselines = _strip_columns(raw["baselines"].copy().rename(columns={
+        "Baseline Modules": "Baseline Method",
+        "Study Instance ID": "Baseline Study Instance ID",
+    }), ["Study ID", "Baseline Study Instance ID", "Metric", "Metric Family"])
     baselines["Baseline (%)"] = pd.to_numeric(baselines["Baseline (%)"], errors="coerce")
-    proposed["Mitigation (%)"] = pd.to_numeric(proposed["Mitigation (%)"], errors="coerce")
-    proposed["Reported Gain (pp)"] = pd.to_numeric(proposed["Reported Gain (pp)"], errors="coerce")
-    proposed = proposed.reset_index(drop=True)
-    proposed["Source Result Row"] = np.arange(1, len(proposed) + 1)
+    baselines = baselines.reset_index(drop=True)
+    baselines["Baseline Source Row"] = np.arange(1, len(baselines) + 1)
 
-    metric_keys = ["Study ID", "Metric", "Metric Family"]
-    baseline_match = baselines.rename(columns={"Study Instance ID": "Baseline Study Instance ID"})
-    base_cols = metric_keys + ["Baseline Study Instance ID", "Baseline Method", "Baseline (%)"]
-    same_instance = proposed.merge(
-        baseline_match[base_cols],
-        left_on=["Study ID", "Study Instance ID", "Metric", "Metric Family"],
-        right_on=["Study ID", "Baseline Study Instance ID", "Metric", "Metric Family"],
-        how="left",
-    )
-    baseline_counts = baselines.groupby(metric_keys)["Baseline (%)"].transform("size")
-    single_baseline = baselines.loc[baseline_counts.eq(1)].rename(columns={"Study Instance ID": "Baseline Study Instance ID"})
-    study_metric = proposed.merge(single_baseline[base_cols], on=metric_keys, how="left")
-    matched_rows = set(same_instance.loc[same_instance["Baseline (%)"].notna(), "Source Result Row"])
-    performance = pd.concat(
-        [
-            same_instance[same_instance["Baseline (%)"].notna()],
-            study_metric[~study_metric["Source Result Row"].isin(matched_rows)],
-        ],
-        ignore_index=True,
-    )
-    performance = performance[performance["Baseline (%)"].notna()].copy()
-    performance["Linkage Status"] = "Matched"
-    performance["Calculated Gain (pp)"] = performance["Mitigation (%)"] - performance["Baseline (%)"]
-    performance["Gain Difference (reported-calculated)"] = (
-        performance["Reported Gain (pp)"] - performance["Calculated Gain (pp)"]
-    )
+    results = _strip_columns(raw["mitigation_results"].copy().rename(columns={
+        "Mitigation Modules": "Proposed Method",
+    }), ["Study ID", "Study Instance ID", "Metric", "Metric Family"])
+    if "Gain" in results.columns:
+        results = results.rename(columns={"Gain": "Reported Gain (pp)"})
+    else:
+        results["Reported Gain (pp)"] = pd.NA
+    results["Mitigation (%)"] = pd.to_numeric(results["Mitigation (%)"], errors="coerce")
+    results["Reported Gain (pp)"] = pd.to_numeric(results["Reported Gain (pp)"], errors="coerce")
+    results = results.reset_index(drop=True)
+    results["Source Result Row"] = np.arange(1, len(results) + 1)
 
-    performance = performance.merge(
-        master[["Study ID", "Task", "Environment", "Dataset Size (images)"]],
-        on="Study ID", how="left", validate="many_to_one"
-    )
-    code_cols = key + [
-        "Barrier Category", "Normalized Barrier", "Mitigation Category", "Mitigation Strategy",
-        "Synthetic Image Method", "Synthetic Type",
-    ]
-    performance = performance.merge(mapping[code_cols], on=key, how="left", validate="many_to_one")
-
-    primary_metrics = analysis_config["analysis"]["primary_metrics"]
-    performance["Primary Metric Eligible"] = [
-        "Yes" if str(metric).strip() in set(primary_metrics.get(task, [])) else "No"
-        for task, metric in zip(performance["Task"], performance["Metric Family"])
-    ]
-    performance["Exclusion Reason"] = np.where(
-        performance["Primary Metric Eligible"].eq("Yes"), "", "Non-primary task metric"
-    )
-    performance.insert(0, "Effect ID", [f"V2-E{i:04d}" for i in range(1, len(performance) + 1)])
-
-    audit = proposed.copy()
-    linked_rows = set(performance["Source Result Row"].astype(int))
-    audit["Linkage Status"] = audit["Source Result Row"].astype(int).map(
-        lambda row: "Matched" if row in linked_rows else "No baseline for study and metric"
-    )
-    study_metric = set(map(tuple, baselines[["Study ID", "Metric", "Metric Family"]].drop_duplicates().values.tolist()))
-    audit["Study-metric baseline exists"] = [
-        "Yes" if (sid, metric, family) in study_metric else "No"
-        for sid, metric, family in zip(audit["Study ID"], audit["Metric"], audit["Metric Family"])
-    ]
+    register = _comparison_register(baselines, results, master)
+    audit = _audit(results, register)
+    performance = register.loc[register["Status"].eq(STATUS_ELIGIBLE)].reset_index(drop=True)
 
     quality_raw = raw["quality"].copy()
     quality_columns = {
@@ -137,15 +216,18 @@ def build_analysis_ready(raw: dict[str, pd.DataFrame], analysis_config: dict) ->
     }
     quality = quality_raw.rename(columns=quality_columns)
     quality = quality.merge(master[["Study ID", "Title", "Task"]], on="Study ID", how="left", validate="one_to_one")
-    for col in quality_columns.values():
-        quality[col] = quality[col].fillna("Not reported").astype(str).str.strip()
+    for column in quality_columns.values():
+        quality[column] = quality[column].fillna("Not reported").astype(str).str.strip()
 
     sources = raw["sources"].copy()
     sources = sources.merge(master[["Study ID", "Title"]], on="Study ID", how="left", validate="one_to_one")
 
     return {
         "study_master": master,
-        "barrier_mitigation_map": mapping,
+        "barrier_profile": barrier_profile,
+        "mitigation_profile": mitigation_profile,
+        "barrier_mitigation_cooccurrence": cooccurrence,
+        "comparison_register": register,
         "performance_results": performance,
         "performance_linkage_audit": audit,
         "evidence_quality": quality,

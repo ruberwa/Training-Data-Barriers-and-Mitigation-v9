@@ -11,7 +11,7 @@
 - `Docs`: project documents, including setup and installation
   - `01_Project-Setup.md`: what this project is and what is in the repository now
   - `02_Installation.md`: how to install Python and the project packages
-  - `03_Analysis-Ready-Tables.md`: how the source workbook becomes the six analysis-ready tables
+  - `03_Analysis-Ready-Tables.md`: how the source workbook becomes the analysis-ready tables
 - `common`: shared paths and names used by every phase
   - `__init__.py`: marks this folder as a Python package
   - `constants.py`: sheet names, analysis-ready filenames, and the Synthetic Image Methods set
@@ -34,13 +34,16 @@
   - `statistics.py`: bootstrap intervals, permutation tests, and study-level gains
   - `plotting.py`: figure style and saving PNG, PDF, and TIFF
   - `progress.py`: timestamped progress logs for each phase
-  - `validation.py`: checks that Phase 1 kept one row per study and exact performance links
+  - `validation.py`: checks the register, eligible gains, and one row per study
 - `results`: outputs written when the analysis runs
-  - `analysis_ready_tables/analysis_ready_tables.xlsx`: the six tables in one workbook
+  - `analysis_ready_tables/analysis_ready_tables.xlsx`: the analysis-ready tables in one workbook
   - `analysis_ready_tables/csv/study_master.csv`: one row per study
-  - `analysis_ready_tables/csv/barrier_mitigation_map.csv`: barrier linked to mitigation inside each study
-  - `analysis_ready_tables/csv/performance_results.csv`: baseline versus mitigation for the same study and metric
-  - `analysis_ready_tables/csv/performance_linkage_audit.csv`: every mitigation result, including any row whose study and metric have no baseline
+  - `analysis_ready_tables/csv/barrier_profile.csv`: each coded barrier, with the study task
+  - `analysis_ready_tables/csv/mitigation_profile.csv`: each coded mitigation, with the study task
+  - `analysis_ready_tables/csv/barrier_mitigation_cooccurrence.csv`: same-instance co-occurrence within a paper
+  - `analysis_ready_tables/csv/comparison_register.csv`: one row per baseline context, with its selection status
+  - `analysis_ready_tables/csv/performance_results.csv`: eligible comparisons, with the signed gain
+  - `analysis_ready_tables/csv/performance_linkage_audit.csv`: every tab 8 row, including rows that were not selected
   - `analysis_ready_tables/csv/evidence_quality.csv`: risk-of-bias and credibility judgments
   - `analysis_ready_tables/csv/sources.csv`: source and justification for each study
   - `logs/phase1.log`: progress record for this step
@@ -52,7 +55,7 @@
   - `03_create_figures.py`: draws the figures from the saved statistics
 - `src/analysis`: table building, statistical results, and figures
   - `__init__.py`: marks this folder as a Python package
-  - `prepare_tables.py`: joins the workbook sheets and applies the exact performance-link rule
+  - `prepare_tables.py`: builds the study, coding, and comparison tables from the workbook
   - `statistical_pipeline.py`: builds the descriptive and research-question tables
   - `figures.py`: draws each publication figure
 

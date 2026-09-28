@@ -131,3 +131,59 @@ def tables_missing(names):
         f"Analysis-ready tables are missing: {names}. "
         "Run src/01_create_analysis_ready_tables.py first."
     )
+
+
+def register_rows(count):
+    return f"Comparison register rows: {count}"
+
+
+def eligible_rows(count):
+    return f"Eligible performance rows: {count}"
+
+
+def pending_rows(count):
+    return f"Pending register rows: {count}"
+
+
+def removed_previous_table(name):
+    return f"Removed previous table: {name}"
+
+
+def register_count_mismatch():
+    return "Comparison register does not preserve one row per baseline context"
+
+
+def register_duplicate():
+    return "Comparison register contains duplicate baseline contexts"
+
+
+def pending_remain():
+    return "Comparison register contains pending rows"
+
+
+def gain_mismatch():
+    return "An eligible gain does not equal selected percent minus baseline percent"
+
+
+def audit_count_mismatch():
+    return "Performance linkage audit does not preserve every mitigation result"
+
+
+def quality_row_mismatch():
+    return "Evidence quality does not preserve one row per identification record"
+
+
+def profile_count_mismatch():
+    return "Barrier or mitigation profile does not preserve the coding records"
+
+
+def register_status_unknown():
+    return "A register row has a status other than Eligible, Ineligible, or Pending"
+
+
+def selected_result_reused():
+    return "A tab 8 result row is selected for more than one baseline context"
+
+
+def performance_not_eligible():
+    return "Performance results include a comparison that is not eligible"
