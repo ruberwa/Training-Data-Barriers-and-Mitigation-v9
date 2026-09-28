@@ -25,10 +25,9 @@ REGISTER_COLUMNS = [
     "Reason",
     "Signed Gain (pp)",
 ]
-SOLE_CANDIDATE_REASON = "Sole tab 8 row shares the study, metric, metric family, and instance ID"
-SEVERAL_CANDIDATES_REASON = "Several tab 8 rows share this study and metric"
-NO_CANDIDATE_REASON = "No tab 8 row with the same metric"
-CONTEXT_MISMATCH_REASON = "The only tab 8 row for this metric does not share the instance ID and metric family"
+MATCHED_REASON = "One mitigation result shares the study and metric family"
+SEVERAL_RESULTS_REASON = "Several mitigation results share this study and metric family"
+NO_RESULT_REASON = "No mitigation result for this study and metric family"
 _COUNT = re.compile(r"\d{1,3}(?:,\d{3})+|\d+")
 
 
@@ -69,16 +68,13 @@ def _result_fields(row):
     }
 
 
-def _automatic_choice(results, study_id, instance_id, metric, family):
-    same_metric = results[results["Study ID"].eq(study_id) & results["Metric"].eq(metric)]
-    if len(same_metric) == 0:
-        return STATUS_PENDING, NO_CANDIDATE_REASON, None
-    if len(same_metric) > 1:
-        return STATUS_PENDING, SEVERAL_CANDIDATES_REASON, None
-    row = same_metric.iloc[0]
-    if row["Study Instance ID"] == instance_id and row["Metric Family"] == family:
-        return STATUS_ELIGIBLE, SOLE_CANDIDATE_REASON, row
-    return STATUS_PENDING, CONTEXT_MISMATCH_REASON, None
+def _automatic_choice(results, study_id, family):
+    same_family = results[results["Study ID"].eq(study_id) & results["Metric Family"].eq(family)]
+    if len(same_family) == 0:
+        return STATUS_PENDING, NO_RESULT_REASON, None
+    if len(same_family) > 1:
+        return STATUS_PENDING, SEVERAL_RESULTS_REASON, None
+    return STATUS_ELIGIBLE, MATCHED_REASON, same_family.iloc[0]
 
 
 def _comparison_register(baselines, results, master):
@@ -87,9 +83,8 @@ def _comparison_register(baselines, results, master):
     for baseline in baselines.to_dict("records"):
         study_id = baseline["Study ID"]
         instance_id = baseline["Baseline Study Instance ID"]
-        metric = baseline["Metric"]
         family = baseline["Metric Family"]
-        status, reason, chosen = _automatic_choice(results, study_id, instance_id, metric, family)
+        status, reason, chosen = _automatic_choice(results, study_id, family)
         fields = _result_fields(chosen)
         gain = pd.NA
         if status == STATUS_ELIGIBLE and chosen is not None:
@@ -100,7 +95,7 @@ def _comparison_register(baselines, results, master):
             "Baseline Study Instance ID": instance_id,
             "Baseline Source Row": int(baseline["Baseline Source Row"]),
             "Baseline Method": baseline["Baseline Method"],
-            "Metric": metric,
+            "Metric": family,
             "Metric Family": family,
             "Baseline (%)": baseline["Baseline (%)"],
             "Status": status,
@@ -168,15 +163,17 @@ def build_analysis_ready(raw: dict[str, pd.DataFrame]) -> dict[str, pd.DataFrame
     baselines = _strip_columns(raw["baselines"].copy().rename(columns={
         "Baseline Modules": "Baseline Method",
         "Study Instance ID": "Baseline Study Instance ID",
-    }), ["Study ID", "Baseline Study Instance ID", "Metric", "Metric Family"])
+    }), ["Study ID", "Baseline Study Instance ID", "Metric Family"])
     baselines["Baseline (%)"] = pd.to_numeric(baselines["Baseline (%)"], errors="coerce")
     baselines = baselines.reset_index(drop=True)
     baselines["Baseline Source Row"] = np.arange(1, len(baselines) + 1)
 
     results = _strip_columns(raw["mitigation_results"].copy().rename(columns={
         "Mitigation Modules": "Proposed Method",
-    }), ["Study ID", "Study Instance ID", "Metric", "Metric Family"])
-    if "Gain" in results.columns:
+    }), ["Study ID", "Study Instance ID", "Metric Family"])
+    if "Gain (pp)" in results.columns:
+        results = results.rename(columns={"Gain (pp)": "Reported Gain (pp)"})
+    elif "Gain" in results.columns:
         results = results.rename(columns={"Gain": "Reported Gain (pp)"})
     else:
         results["Reported Gain (pp)"] = pd.NA
@@ -219,9 +216,6 @@ def build_analysis_ready(raw: dict[str, pd.DataFrame]) -> dict[str, pd.DataFrame
     for column in quality_columns.values():
         quality[column] = quality[column].fillna("Not reported").astype(str).str.strip()
 
-    sources = raw["sources"].copy()
-    sources = sources.merge(master[["Study ID", "Title"]], on="Study ID", how="left", validate="one_to_one")
-
     return {
         "study_master": master,
         "barrier_profile": barrier_profile,
@@ -231,5 +225,4 @@ def build_analysis_ready(raw: dict[str, pd.DataFrame]) -> dict[str, pd.DataFrame
         "performance_results": performance,
         "performance_linkage_audit": audit,
         "evidence_quality": quality,
-        "sources": sources,
     }
