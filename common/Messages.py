@@ -187,3 +187,59 @@ def selected_result_reused():
 
 def performance_not_eligible():
     return "Performance results include a comparison that is not eligible"
+
+
+def statistics_description():
+    return "Create statistics tables from the analysis-ready tables"
+
+
+def loading_analysis_ready(path):
+    return f"Loading analysis-ready tables: {path}"
+
+
+def building_statistics():
+    return "Building statistics tables"
+
+
+def statistics_complete():
+    return "Statistics tables complete"
+
+
+def statistics_run_complete():
+    return "Statistics run complete"
+
+
+def task_synthesis(task, studies, median):
+    return f"{task}: {studies} studies, median gain {median}"
+
+
+def negative_gains_missing():
+    return "Selected gains do not include a negative gain"
+
+
+def rq6_strategy_mismatch():
+    return "A synthetic-method comparison includes a paper with several mitigation strategies"
+
+
+def study_gain_count_mismatch():
+    return "Study-level gains do not match the selected comparisons"
+
+
+def synthesis_invalid():
+    return "Task synthesis is missing a task or labels a gain as meaningful"
+
+
+def metric_mismatch():
+    return "A selected comparison uses a metric outside Detection mAP@0.5, Classification Accuracy, or Segmentation mIoU"
+
+
+def bootstrap_setting_unsupported():
+    return "Bootstrap settings must use the median and the percentile interval"
+
+
+def question_map_mismatch():
+    return "The research-question map does not list each statistics table once"
+
+
+def statistics_studies(count):
+    return f"Study-level gains: {count}"
