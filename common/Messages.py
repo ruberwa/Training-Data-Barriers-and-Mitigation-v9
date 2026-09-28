@@ -79,7 +79,7 @@ def barrier_mitigation_rows(count):
 
 
 def exact_linked_rows(count):
-    return f"Exact linked performance rows: {count}"
+    return f"Linked performance rows: {count}"
 
 
 def validation_status(status):

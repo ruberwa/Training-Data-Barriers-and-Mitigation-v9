@@ -21,7 +21,7 @@
   - `figures-config.yaml`: figure sizes, colors, filenames, and output formats
   - `research-question-map.yaml`: which tables and figures answer each research question
 - `data`: the analysis-ready dataset
-  - `Analysis-ready-dataset.xlsx`: source record of the included studies
+  - `Ready Analysis dataset.xlsx`: source record of the included studies
 - `data/maps`: country boundaries for the geographic view
   - `naturalearth_lowres.shp`: country shapes
   - `naturalearth_lowres.shx`: shape index
@@ -39,8 +39,8 @@
   - `analysis_ready_tables/analysis_ready_tables.xlsx`: the six tables in one workbook
   - `analysis_ready_tables/csv/study_master.csv`: one row per study
   - `analysis_ready_tables/csv/barrier_mitigation_map.csv`: barrier linked to mitigation inside each study
-  - `analysis_ready_tables/csv/performance_results.csv`: exact baseline versus mitigation comparisons
-  - `analysis_ready_tables/csv/performance_linkage_audit.csv`: every mitigation result, including rows with no exact baseline
+  - `analysis_ready_tables/csv/performance_results.csv`: baseline versus mitigation for the same study and metric
+  - `analysis_ready_tables/csv/performance_linkage_audit.csv`: every mitigation result, including any row whose study and metric have no baseline
   - `analysis_ready_tables/csv/evidence_quality.csv`: risk-of-bias and credibility judgments
   - `analysis_ready_tables/csv/sources.csv`: source and justification for each study
   - `logs/phase1.log`: progress record for this step

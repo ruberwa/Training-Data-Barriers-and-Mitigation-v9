@@ -32,7 +32,7 @@ def phase1_validation(raw: dict[str, pd.DataFrame], ready: dict[str, pd.DataFram
         "baseline_rows": int(len(raw["baselines"])),
         "mitigation_result_rows": int(len(raw["mitigation_results"])),
         "exact_linked_performance_rows": int(len(perf)),
-        "unlinked_mitigation_result_rows": int((audit["Linkage Status"] != "Exact match").sum()),
+        "unlinked_mitigation_result_rows": int((audit["Linkage Status"] != "Matched").sum()),
         "quality_rows": int(len(quality)),
         "duplicate_study_ids_master": duplicate_key_count(master, ["Study ID"]),
         "duplicate_quality_study_ids": duplicate_key_count(quality, ["Study ID"]),

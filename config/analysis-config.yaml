@@ -1,7 +1,7 @@
 project:
   title: "Training-Data Barriers and Mitigation Strategies in Weed Detection, Classification and Segmentation"
   expected_studies: 154
-  authoritative_dataset: "Analysis-ready-dataset.xlsx"
+  authoritative_dataset: "Ready Analysis dataset.xlsx"
 
 analysis:
   task_order: [Detection, Segmentation, Classification]

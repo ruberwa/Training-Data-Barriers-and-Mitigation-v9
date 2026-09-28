@@ -1,7 +1,7 @@
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-DATA_FILE = BASE_DIR / "data" / "Analysis-ready-dataset.xlsx"
+DATA_FILE = BASE_DIR / "data" / "Ready Analysis dataset.xlsx"
 CONFIG_DIR = BASE_DIR / "config"
 ANALYSIS_CONFIG = CONFIG_DIR / "analysis-config.yaml"
 RESULTS_DIR = BASE_DIR / "results"

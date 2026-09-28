@@ -41,22 +41,39 @@ def build_analysis_ready(raw: dict[str, pd.DataFrame], analysis_config: dict) ->
     mapping["Synthetic Type"] = mapping["Mitigation Strategy"].where(mapping["Synthetic Image Method"].eq("Yes"), "")
 
     baselines = raw["baselines"].copy().rename(columns={"Baseline Modules": "Baseline Method"})
-    proposed = raw["mitigation_results"].copy().rename(columns={
-        "Mitigation Modules": "Proposed Method",
-        "Gain": "Reported Gain (pp)",
-    })
+    proposed = raw["mitigation_results"].copy().rename(columns={"Mitigation Modules": "Proposed Method"})
+    if "Gain" in proposed.columns:
+        proposed = proposed.rename(columns={"Gain": "Reported Gain (pp)"})
+    else:
+        proposed["Reported Gain (pp)"] = pd.NA
     baselines["Baseline (%)"] = pd.to_numeric(baselines["Baseline (%)"], errors="coerce")
     proposed["Mitigation (%)"] = pd.to_numeric(proposed["Mitigation (%)"], errors="coerce")
     proposed["Reported Gain (pp)"] = pd.to_numeric(proposed["Reported Gain (pp)"], errors="coerce")
     proposed = proposed.reset_index(drop=True)
     proposed["Source Result Row"] = np.arange(1, len(proposed) + 1)
 
-    perf_keys = ["Study ID", "Study Instance ID", "Metric", "Metric Family"]
-    base_cols = perf_keys + ["Baseline Method", "Baseline (%)"]
-    performance = proposed.merge(
-        baselines[base_cols], on=perf_keys, how="inner", validate="many_to_one"
+    metric_keys = ["Study ID", "Metric", "Metric Family"]
+    baseline_match = baselines.rename(columns={"Study Instance ID": "Baseline Study Instance ID"})
+    base_cols = metric_keys + ["Baseline Study Instance ID", "Baseline Method", "Baseline (%)"]
+    same_instance = proposed.merge(
+        baseline_match[base_cols],
+        left_on=["Study ID", "Study Instance ID", "Metric", "Metric Family"],
+        right_on=["Study ID", "Baseline Study Instance ID", "Metric", "Metric Family"],
+        how="left",
     )
-    performance["Linkage Status"] = "Exact match"
+    baseline_counts = baselines.groupby(metric_keys)["Baseline (%)"].transform("size")
+    single_baseline = baselines.loc[baseline_counts.eq(1)].rename(columns={"Study Instance ID": "Baseline Study Instance ID"})
+    study_metric = proposed.merge(single_baseline[base_cols], on=metric_keys, how="left")
+    matched_rows = set(same_instance.loc[same_instance["Baseline (%)"].notna(), "Source Result Row"])
+    performance = pd.concat(
+        [
+            same_instance[same_instance["Baseline (%)"].notna()],
+            study_metric[~study_metric["Source Result Row"].isin(matched_rows)],
+        ],
+        ignore_index=True,
+    )
+    performance = performance[performance["Baseline (%)"].notna()].copy()
+    performance["Linkage Status"] = "Matched"
     performance["Calculated Gain (pp)"] = performance["Mitigation (%)"] - performance["Baseline (%)"]
     performance["Gain Difference (reported-calculated)"] = (
         performance["Reported Gain (pp)"] - performance["Calculated Gain (pp)"]
@@ -85,7 +102,7 @@ def build_analysis_ready(raw: dict[str, pd.DataFrame], analysis_config: dict) ->
     audit = proposed.copy()
     linked_rows = set(performance["Source Result Row"].astype(int))
     audit["Linkage Status"] = audit["Source Result Row"].astype(int).map(
-        lambda row: "Exact match" if row in linked_rows else "No exact baseline match"
+        lambda row: "Matched" if row in linked_rows else "No baseline for study and metric"
     )
     study_metric = set(map(tuple, baselines[["Study ID", "Metric", "Metric Family"]].drop_duplicates().values.tolist()))
     audit["Study-metric baseline exists"] = [
