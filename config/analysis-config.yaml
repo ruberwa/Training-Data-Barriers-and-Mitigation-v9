@@ -1,0 +1,23 @@
+project:
+  title: "Training-Data Barriers and Mitigation Strategies in Weed Detection, Classification and Segmentation"
+  expected_studies: 154
+  authoritative_dataset: "Ready Analysis dataset.xlsx"
+
+analysis:
+  task_order: [Detection, Segmentation, Classification]
+  primary_metrics:
+    Detection: ["mAP@0.5", "mAP50%", "AP50"]
+    Segmentation: ["mIoU"]
+    Classification: ["Accuracy", "Top-1 Accuracy"]
+  meaningful_gain_pp: 10.0
+  primary_within_study_aggregation: median
+  alternative_within_study_aggregation: mean
+  ci_level: 0.95
+  minimum_subgroup_studies: 5
+  rare_display_threshold_studies: 3
+  minimum_regression_studies: 10
+  sparse_expected_cell_threshold: 5
+  extreme_gain_lower_pp: -25
+  extreme_gain_upper_pp: 50
+  source_verification_required_for_primary: false
+  use_primary_metric_eligible_flag: true
