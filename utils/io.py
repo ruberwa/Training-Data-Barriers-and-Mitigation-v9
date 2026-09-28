@@ -69,6 +69,33 @@ def load_yaml(path: Path) -> dict:
         return yaml.safe_load(handle)
 
 
+def _merge_mapping(base: dict, override: dict) -> dict:
+    merged = dict(base)
+    for key, value in override.items():
+        if isinstance(value, dict) and isinstance(merged.get(key), dict):
+            merged[key] = _merge_mapping(merged[key], value)
+        else:
+            merged[key] = value
+    return merged
+
+
+def load_figure_config(directory: Path) -> dict:
+    common_path = directory / "common.yaml"
+    common = load_yaml(common_path)
+    shared = ("output", "display", "geography", "publication", "theme", "palette", "card", "grid", "donut")
+    figures = {}
+    for path in sorted(directory.glob("*.yaml")):
+        if path.name == "common.yaml":
+            continue
+        spec = load_yaml(path) or {}
+        for name in shared:
+            if name in spec and isinstance(spec[name], dict):
+                spec[name] = _merge_mapping(common.get(name, {}), spec[name])
+        figures[path.stem] = spec
+    common["figures"] = figures
+    return common
+
+
 def ensure_directories(*paths: Path) -> None:
     for path in paths:
         path.mkdir(parents=True, exist_ok=True)

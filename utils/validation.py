@@ -5,7 +5,15 @@ import pandas as pd
 from common.constants import STATUS_ELIGIBLE, STATUS_INELIGIBLE, STATUS_PENDING
 from common.Messages import (
     audit_count_mismatch,
+    bootstrap_setting_unsupported,
+    figure_map_mismatch,
+    figure_missing,
     gain_mismatch,
+    metric_mismatch,
+    negative_gains_missing,
+    question_map_mismatch,
+    study_gain_count_mismatch,
+    synthesis_invalid,
     pending_remain,
     performance_not_eligible,
     profile_count_mismatch,
@@ -14,6 +22,7 @@ from common.Messages import (
     register_count_mismatch,
     register_duplicate,
     register_status_unknown,
+    rq6_strategy_mismatch,
     selected_result_reused,
     study_master_duplicate,
     study_master_row_mismatch,
@@ -92,6 +101,88 @@ def analysis_ready_validation(raw: dict[str, pd.DataFrame], ready: dict[str, pd.
         failures.append(selected_result_reused())
     if set(performance["Comparison ID"]) != set(eligible["Comparison ID"]):
         failures.append(performance_not_eligible())
+    return {
+        "status": "PASS" if not failures else "FAIL",
+        "checks": checks,
+        "failures": failures,
+    }
+
+
+def statistics_validation(frames: dict[str, pd.DataFrame], tables: dict[str, pd.DataFrame], cfg: dict, question_map: dict) -> dict:
+    effects = tables["rq3_study_gains"]
+    synthesis = tables["rq3_task_synthesis"]
+    included = tables["rq6_included_papers"]
+    excluded = tables["rq6_excluded_papers"]
+    strategies = frames["mitigation_profile"].dropna(subset=["Mitigation Strategy"]).groupby("Study ID")["Mitigation Strategy"].nunique()
+    included_counts = included["Study ID"].map(strategies)
+    performance = frames["performance_results"]
+    expected_metric = performance["Task"].map(cfg["analysis"]["primary_metrics"])
+    bootstrap = cfg["bootstrap"]
+    listed = [name for section in question_map.values() for name in section["statistical_tables"]]
+    checks = {
+        "study_level_rows": int(len(effects)),
+        "performance_rows": int(len(frames["performance_results"])),
+        "duplicate_study_effects": int(effects["Study ID"].duplicated().sum()),
+        "negative_gains": int((effects["study_gain"] < 0).sum()),
+        "synthesis_tasks": synthesis["Task"].tolist(),
+        "meaningful_column_present": "Meaningful n" in synthesis.columns or "Meaningful %" in synthesis.columns,
+        "rq6_included_studies": int(included["Study ID"].nunique()),
+        "rq6_excluded_studies": int(excluded["Study ID"].nunique()),
+        "rq6_several_strategy_included": int(included_counts.gt(1).sum()),
+        "metric_mismatches": int((performance["Metric Family"].astype(str) != expected_metric.astype(str)).sum()),
+        "bootstrap_statistic": bootstrap["statistic"],
+        "bootstrap_interval": bootstrap["interval"],
+        "unmapped_tables": sorted(set(tables) - set(listed)),
+        "unknown_mapped_tables": sorted(set(listed) - set(tables)),
+        "repeated_mapped_tables": sorted({name for name in listed if listed.count(name) > 1}),
+    }
+    failures = []
+    if checks["study_level_rows"] != checks["performance_rows"] or checks["duplicate_study_effects"] != 0:
+        failures.append(study_gain_count_mismatch())
+    if checks["negative_gains"] == 0:
+        failures.append(negative_gains_missing())
+    if checks["meaningful_column_present"] or checks["synthesis_tasks"] != list(cfg["analysis"]["task_order"]):
+        failures.append(synthesis_invalid())
+    if checks["rq6_several_strategy_included"] != 0:
+        failures.append(rq6_strategy_mismatch())
+    if checks["rq6_included_studies"] + checks["rq6_excluded_studies"] != checks["study_level_rows"]:
+        failures.append(rq6_strategy_mismatch())
+    if checks["metric_mismatches"] != 0:
+        failures.append(metric_mismatch())
+    if checks["bootstrap_statistic"] != "median" or checks["bootstrap_interval"] != "percentile":
+        failures.append(bootstrap_setting_unsupported())
+    if checks["unmapped_tables"] or checks["unknown_mapped_tables"] or checks["repeated_mapped_tables"]:
+        failures.append(question_map_mismatch())
+    return {
+        "status": "PASS" if not failures else "FAIL",
+        "checks": checks,
+        "failures": failures,
+    }
+
+
+def figures_validation(fig_cfg: dict, question_map: dict, figures_dir) -> dict:
+    configured = list(fig_cfg["figures"])
+    mapped = [name for section in question_map.values() for name in section.get("figures", [])]
+    formats = {name: spec for name, spec in fig_cfg["output"]["formats"].items() if spec.get("enabled")}
+    missing = []
+    for key in configured:
+        filename = fig_cfg["figures"][key].get("filename", key)
+        for format_name, spec in formats.items():
+            extension = "tiff" if format_name == "tiff" else format_name
+            path = figures_dir / spec.get("folder", format_name) / f"{filename}.{extension}"
+            if not path.exists():
+                missing.append(path.name)
+    checks = {
+        "configured_figures": configured,
+        "mapped_figures": mapped,
+        "missing_files": missing,
+        "map_without_config": sorted(set(mapped) - set(configured)),
+    }
+    failures = []
+    if missing:
+        failures.append(figure_missing())
+    if checks["map_without_config"]:
+        failures.append(figure_map_mismatch())
     return {
         "status": "PASS" if not failures else "FAIL",
         "checks": checks,
