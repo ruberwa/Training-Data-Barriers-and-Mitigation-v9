@@ -243,3 +243,39 @@ def question_map_mismatch():
 
 def statistics_studies(count):
     return f"Study-level gains: {count}"
+
+
+def figures_description():
+    return "Create figures from the saved statistics"
+
+
+def building_figures():
+    return "Building figures"
+
+
+def figures_run_complete():
+    return "Figures run complete"
+
+
+def figures_directory(path):
+    return f"Figures directory: {path}"
+
+
+def writing_figure(index, total, name):
+    return f"[{index}/{total}] Writing {name}"
+
+
+def map_not_found(path):
+    return f"World map not found: {path}"
+
+
+def unmatched_countries(names):
+    return f"Countries not matched to the map: {names}"
+
+
+def figure_missing():
+    return "A configured figure file was not written"
+
+
+def figure_map_mismatch():
+    return "The research-question map names a figure that is not configured"

@@ -13,6 +13,7 @@
   - `02_Installation.md`: how to install Python and the project packages
   - `03_Analysis-Ready-Tables.md`: how the source workbook becomes the analysis-ready tables
   - `04_Statistics.md`: how the analysis-ready tables become the research-question statistics
+  - `05_Figures.md`: how the saved statistics become the figures
 - `common`: shared paths and names used by every phase
   - `__init__.py`: marks this folder as a Python package
   - `constants.py`: sheet names, analysis-ready filenames, and the Synthetic Image Methods set
@@ -20,8 +21,9 @@
 - `config`: settings for the analysis, figures, and research questions
   - `analysis-config.yaml`: task order, the three task metrics, and sensitivity rules
   - `bootstrap-config.yaml`: bootstrap seed, repetitions, permutation repetitions, and the percentile interval
-  - `figures-config.yaml`: figure sizes, colors, filenames, and output formats
-  - `research-question-map.yaml`: which statistics tables answer each research question
+  - `figures/common.yaml`: shared colors, cards, grids, and output formats
+  - `figures/`: one file per figure for size, tables, panels, and labels
+  - `research-question-map.yaml`: which statistics tables and figures answer each research question
 - `data`: the analysis-ready dataset
   - `Ready Analysis dataset.xlsx`: source record of the included studies
 - `data/maps`: country boundaries for the geographic view
@@ -53,6 +55,11 @@
   - `statistics/csv/`: one CSV for each statistics table
   - `logs/statistics.log`: progress record for the statistics
   - `validation/statistics.json`: pass or fail record for the statistics
+  - `figures/pdf/`: publication figures as PDF
+  - `figures/png/`: publication figures as PNG
+  - `figures/tiff/`: publication figures as TIFF
+  - `logs/figures.log`: progress record for the figures
+  - `validation/figures.json`: pass or fail record for the figures
 - `src`: the three phase scripts
   - `__init__.py`: marks this folder as a Python package
   - `01_create_analysis_ready_tables.py`: builds the analysis-ready tables from the workbook

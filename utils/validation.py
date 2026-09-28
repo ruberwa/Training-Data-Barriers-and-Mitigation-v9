@@ -6,6 +6,8 @@ from common.constants import STATUS_ELIGIBLE, STATUS_INELIGIBLE, STATUS_PENDING
 from common.Messages import (
     audit_count_mismatch,
     bootstrap_setting_unsupported,
+    figure_map_mismatch,
+    figure_missing,
     gain_mismatch,
     metric_mismatch,
     negative_gains_missing,
@@ -151,6 +153,36 @@ def statistics_validation(frames: dict[str, pd.DataFrame], tables: dict[str, pd.
         failures.append(bootstrap_setting_unsupported())
     if checks["unmapped_tables"] or checks["unknown_mapped_tables"] or checks["repeated_mapped_tables"]:
         failures.append(question_map_mismatch())
+    return {
+        "status": "PASS" if not failures else "FAIL",
+        "checks": checks,
+        "failures": failures,
+    }
+
+
+def figures_validation(fig_cfg: dict, question_map: dict, figures_dir) -> dict:
+    configured = list(fig_cfg["figures"])
+    mapped = [name for section in question_map.values() for name in section.get("figures", [])]
+    formats = {name: spec for name, spec in fig_cfg["output"]["formats"].items() if spec.get("enabled")}
+    missing = []
+    for key in configured:
+        filename = fig_cfg["figures"][key].get("filename", key)
+        for format_name, spec in formats.items():
+            extension = "tiff" if format_name == "tiff" else format_name
+            path = figures_dir / spec.get("folder", format_name) / f"{filename}.{extension}"
+            if not path.exists():
+                missing.append(path.name)
+    checks = {
+        "configured_figures": configured,
+        "mapped_figures": mapped,
+        "missing_files": missing,
+        "map_without_config": sorted(set(mapped) - set(configured)),
+    }
+    failures = []
+    if missing:
+        failures.append(figure_missing())
+    if checks["map_without_config"]:
+        failures.append(figure_map_mismatch())
     return {
         "status": "PASS" if not failures else "FAIL",
         "checks": checks,
